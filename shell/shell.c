@@ -50,8 +50,7 @@ int run_exec(char **vector, char **envp) {
         return 0;
     } else {
         i = path_index(envp);
-        char **temp = mytoc(envp[i], '=');
-        char **path = mytoc(envp[1],':');
+        char **path = mytoc(envp[i],':');
         while(path[i] != '\0') {
             char *lastPath = concat(*path, vector[0]);
             path[0] = lastPath;
@@ -73,7 +72,7 @@ int run_exec(char **vector, char **envp) {
 
 
 int main (int argc, char**argv, char**envp) {
-    char **vector, **pipeVector, delimiter = ' ';
+    char **vector, **pipeVector, **pathVector, delimiter = ' ';
     int pid, retVal;
     char * PS1 = getenv("PS1");
     
@@ -83,7 +82,8 @@ int main (int argc, char**argv, char**envp) {
             int length = sizeof(PS1);
             write(1, getenv("PS1"), length);
         } else {
-            setenv("PS1", "$ ", 0);
+            write(1, "$ ", 2);
+            setenv("PS1", "$ ", 2);
         }
         char line[INBUFLEN];
         read(0, line, INBUFLEN);
@@ -92,6 +92,7 @@ int main (int argc, char**argv, char**envp) {
     
         if (!compare_str(vector[0], "exit")) {
             /* check for change directory */
+            
             if (compare_str(vector[0], "cd")) {
                 chdir(vector[1]);
             }
