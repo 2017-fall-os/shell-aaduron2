@@ -7,33 +7,6 @@
 
 #define INBUFLEN 1024
 
-/* Modified version of forkPipeDemo provided by Dr. Freudenthal */
-void forkPipe(char **vector, char **envp)
-{
-    
-  char **temp1 = mytoc(vector[0], ' ');
-  char **temp2 = mytoc(vector[1], ' ');
-  int pid;
-  int *pipeFds;
-  pipeFds = (int *) calloc(2, sizeof(int));
-  pipe(pipeFds);
-
-  pid = fork();
-  if (pid == 0) {		/* child */
-    close(1);
-    close(pipeFds[0]);
-    dup(pipeFds[1]);
-    run_exec(temp1, envp);
-    exit(0);
-  } else { 			/* parent */
-    close(0);
-    close(pipeFds[1]);
-    dup(pipeFds[0]);
-    close(pipeFds[0]); close(pipeFds[1]);
-    run_exec(temp2, envp);
-  }
-}
-
 int run_exec(char **vector, char **envp) {
     int retVal;
     int i = 0;
@@ -70,70 +43,75 @@ int run_exec(char **vector, char **envp) {
     }
 }
 
+/* Modified version of forkPipeDemo provided by Dr. Freudenthal */
+void forkPipe(char **vector, char **envp)
+{
+    
+  char **temp1 = mytoc(vector[0], ' ');
+  char **temp2 = mytoc(vector[1], ' ');
+  int pid;
+  int *pipeFds;
+  pipeFds = (int *) calloc(2, sizeof(int));
+  pipe(pipeFds);
+
+  pid = fork();
+  if (pid == 0) {		/* child */
+    close(1);
+    close(pipeFds[0]);
+    dup(pipeFds[1]);
+    run_exec(temp1, envp);
+    exit(0);
+  } else { 			/* parent */
+    close(0);
+    close(pipeFds[1]);
+    dup(pipeFds[0]);
+    close(pipeFds[0]); close(pipeFds[1]);
+    run_exec(temp2, envp);
+  }
+}
+
 
 int main (int argc, char**argv, char**envp) {
-    char **vector, **pipeVector, **pathVector, delimiter = ' ';
+    char **vector, delimiter = ' ';
     int pid, retVal;
-    char * PS1 = getenv("PS1");
-    
+
     while(1) {
-        if (getenv("PS1")) {
-            char *PS1 = getenv("PS1");
-            int length = sizeof(PS1);
-            write(1, getenv("PS1"), length);
-        } else {
-            write(1, "$ ", 2);
-            setenv("PS1", "$ ", 2);
-        }
         char line[INBUFLEN];
+        write(1, "$ ", 2);
         read(0, line, INBUFLEN);
         vector = mytoc(line, delimiter);     //Tokenize input with delimiter
-        pipeVector = mytoc(line, '|');
     
-        if (!compare_str(vector[0], "exit")) {
-            /* check for change directory */
-            
-            if (compare_str(vector[0], "cd")) {
-                chdir(vector[1]);
-            }
-            /* Check for piping */
-            else if (find_length(pipeVector) == 2) {
-                pid = fork();
-                if (pid == 0) {
-                    forkPipe(pipeVector, envp);
-                    exit(0);
-                } else {
-                    wait(NULL);
-                }
-                continue;
-            }
-            else {
-                pid = fork();
-                if (pid == 0) {
-                    retVal = run_exec(vector, envp);
-                    if (retVal < 0) {
-                        printf("Command finished with error.\n");
-                        fflush(stdout);
-                    } else if(retVal > 0) {
-                        printf("Didn't find command.\n");
-                        fflush(stdout);
-                    } else {
-                        exit(0);
-                    }
-                    
-                } else if(pid < 0) {
-                    printf("Fork failed.\n");
-                }
-            }
-            for (int i = 0; i < sizeof(line); i++)
-                line[i] = 0;
-            free_vector(vector);
-            free_vector(pipeVector);
-        } else {
+        if (compare_str(vector[0], "exit")) {
             return 0;
         }
+        /* check for change directory */
+        else if (compare_str(vector[0], "cd\0")) {
+            retVal = chdir(vector[1]);
+            if (retVal = 0) {
+                printf("Failed to change directory.");
+                fflush(stdout);
+            }
+        } else {
+            pid = fork();
+            if (pid == 0) {
+                retVal = execve(vector[0], vector, envp);
+                if (retVal < 0) {
+                    printf("Command finished with error.\n");
+                    fflush(stdout);
+                } else if (retVal > 0) {
+                    printf("Didn't find command.\n");
+                    fflush(stdout);
+                } else if (pid < 0) {
+                    printf("Fork failure.\n");
+                    fflush(stdout);
+                }
+            }
+        }
+        
+        for (int i = 0; i < sizeof(line); i++)
+            line[i] = 0;
+        
+        free_vector(vector);
     }
-    
-  
   return 0;
 }

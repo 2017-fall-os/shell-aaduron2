@@ -149,8 +149,6 @@ int path_index(char **vector) {
     int result = 0;
     while (vector[i] != '\0') {
         result = compare_str(vector[i], "PATH");
-        if (result)
-            return result;
         i++;
     }
     
